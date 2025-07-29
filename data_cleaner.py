@@ -1,8 +1,9 @@
 """
 Clean and format business data for display
 """
-import pandas as pd
 import re
+
+import pandas as pd
 
 
 def clean_business_data(df):
