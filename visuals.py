@@ -6,10 +6,8 @@ import subprocess
 
 import pandas as pd
 
-from data_cleaner import clean_business_data
-
 # Configuration
-CSV_FILE = "nh_active_only.csv"
+CSV_FILE = "nh_cleaned_data.csv"
 DB_FILE = "nh_sos_data.db"
 
 
@@ -17,7 +15,6 @@ def create_database():
     """Create SQLite database with cleaned data."""
     # Load and clean data
     df = pd.read_csv(CSV_FILE)
-    df = clean_business_data(df)
 
     # Create database
     with sqlite3.connect(DB_FILE) as conn:
