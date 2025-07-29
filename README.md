@@ -131,15 +131,15 @@ The scraper handles several error scenarios:
 
 ## Troubleshooting
 
-**Browser check detected**: The site has anti-automation measures. Current settings usually avoid this, but if it happens frequently, increase wait times in config.py
+**Browser check detected**: The site has anti-automation measures. Current settings usually avoid this, but if it happens frequently, increase wait times in `config.py`
 
 **Navigation failures**: Some pages may fail to load. The scraper tracks these and you can manually check failed pages in the state file
 
-**Duplicate businesses**: Automatically handled - the scraper deduplicates by business_id
+**Duplicate businesses**: Automatically handled - the scraper deduplicates by `business_id`
 
 ## License
 
-This tool is for educational and research purposes. Ensure you comply with the website's terms of service and robots.txt.
+This tool is for educational and research purposes. Ensure you comply with the website's terms of service and `robots.txt`.
 
 ## Notes
 
