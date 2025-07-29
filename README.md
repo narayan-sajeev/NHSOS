@@ -119,7 +119,7 @@ The scraper handles several error scenarios:
 
 - Processes approximately 6-11 pages per session
 - 15-25 second delays between sessions
-- Average runtime depends on total pages (your run completed 373 pages)
+- Average runtime depends on total pages
 - Typical page processing: 2-3 seconds per page
 
 ## Best Practices
