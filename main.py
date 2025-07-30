@@ -4,6 +4,7 @@
 import asyncio
 import os
 import sys
+
 import pandas as pd
 
 import config
@@ -30,7 +31,7 @@ def check_completion_status(state):
     """Check if scraping is complete for all terms."""
     if not state:
         return False
-        
+
     for term in config.SEARCH_TERMS:
         completed = len(state.completed_pages.get(term, set()))
         total = state.total_pages.get(term)
@@ -49,10 +50,7 @@ def print_search_term_summary(df):
 async def main():
     """Main application entry point."""
     print_header()
-    
-    # Create CSV directory if it doesn't exist
-    os.makedirs(config.CSV_DIR, exist_ok=True)
-    
+
     # Check if we should skip scraping and go directly to processing
     if check_progress_exists() and len(sys.argv) > 1 and sys.argv[1] == '--process-only':
         print("Processing mode: Using existing progress.csv")
@@ -61,7 +59,7 @@ async def main():
         print_search_term_summary(df)
         process_scraped_data(df)
         return
-    
+
     state = None
     try:
         # Run the scraper
@@ -72,18 +70,18 @@ async def main():
         print(f"\n\nUnexpected error: {e}")
         print("Progress has been saved - you can resume after fixing the issue")
         return
-    
+
     # Process results if scraping is complete
     if state:
         scraper.print_final_summary(state)
-        
+
         if check_completion_status(state) and os.path.exists(config.PROGRESS_FILE):
             # Load scraped data
             df = pd.read_csv(config.PROGRESS_FILE)
             print(f"\nTotal unique businesses scraped: {len(df)}")
-            
+
             print_search_term_summary(df)
-            
+
             # Process the data
             process_scraped_data(df)
         else:
