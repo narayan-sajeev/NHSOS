@@ -1,27 +1,25 @@
 # NH SOS Multi-Term Scraper
 
-A robust web scraper for the New Hampshire Secretary of State Business Inquiry system that searches for businesses using multiple search terms and handles pagination, rate limiting, and session management.
+A robust web scraper for the New Hampshire Secretary of State Business Inquiry system that searches for businesses using multiple search terms, filters for active businesses, and deduplicates against existing data.
 
 ## Overview
 
-This scraper automates the process of searching for businesses on the NH SOS QuickStart portal using predefined search terms. It's designed to be resilient, with features like state persistence, automatic retry logic, and intelligent rate limiting to avoid detection.
+This scraper automates the process of searching for businesses on the NH SOS QuickStart portal, then processes the results to identify new prospects not already in your database.
 
 ## Features
 
 - **Multi-term search**: Automatically searches using 15 different business-related terms
-- **State persistence**: Saves progress after each session, allowing you to stop and resume at any time
-- **Smart pagination**: Handles large result sets with intelligent page navigation
-- **Rate limiting**: Random delays between sessions (15-25 seconds) to avoid detection
-- **Batch processing**: Processes 6 pages per batch, max 11 pages per session
-- **Error recovery**: Tracks failed pages and handles browser checks gracefully
-- **Duplicate detection**: Automatically removes duplicate businesses by ID
-- **Export options**: Generates both complete dataset and active-only business lists
+- **State persistence**: Saves progress after each session, allowing you to stop and resume
+- **Smart filtering**: Only processes businesses with "Good Standing" or "Active" status
+- **Automatic deduplication**: Compares against HubSpot and target files using exact and fuzzy matching
+- **Minimal output**: Creates only 3 CSV files: progress.csv, matched.csv, and final_data.csv
 
 ## Requirements
 
 - Python 3.7+
 - Playwright
 - Pandas
+- RapidFuzz
 - AsyncIO support
 
 ## Installation
@@ -29,121 +27,119 @@ This scraper automates the process of searching for businesses on the NH SOS Qui
 1. Clone this repository
 2. Install required packages:
    ```bash
-   pip install playwright pandas asyncio
+   pip install playwright pandas asyncio rapidfuzz
    playwright install chromium
+   ```
+3. Create the CSV directory:
+   ```bash
+   mkdir csvs
    ```
 
 ## Project Structure
 
 ```
-├── main.py           # Entry point - orchestrates the scraping process
-├── scraper.py        # Main scraping logic and session management
-├── browser.py        # Browser automation and page interactions
-├── state.py          # State persistence and management
-├── config.py         # Configuration settings
-├── nh_scraper_state.json    # State file (auto-generated)
-├── nh_progress_all.csv      # Progress file with all businesses
-├── nh_final_data.csv        # Final cleaned dataset
-└── nh_active_only.csv       # Active businesses only
+├── main.py               # Entry point with integrated processing
+├── scraper.py            # Main scraping logic
+├── browser.py            # Browser automation
+├── state.py              # State persistence
+├── config.py             # Configuration settings
+├── nh_scraper_state.json # State file (auto-generated)
+└── csvs/                 # CSV directory
+    ├── progress.csv      # Scraping progress (all data)
+    ├── matched.csv       # Businesses that exist in your database
+    ├── final_data.csv    # New prospects (ready to use)
+    ├── hubspot.csv       # Your HubSpot data (you provide)
+    └── targets_*.csv     # Your existing business data (you provide)
 ```
+
+## Setup
+
+1. Place your existing data files in the `csvs/` directory:
+   - `hubspot.csv` - Must have an "Associated Company" column
+   - `targets_*.csv` - Any number of target files, must have a "business_name" column
+
+2. Run the scraper:
+   ```bash
+   python main.py
+   ```
+
+## How It Works
+
+1. **Scraping Phase**: 
+   - Searches each term on NH SOS website
+   - Extracts business information
+   - Saves all data to `progress.csv`
+   - Can be stopped and resumed at any time
+
+2. **Processing Phase** (runs automatically when scraping completes):
+   - Filters for active businesses only
+   - Cleans and standardizes the data
+   - Compares against your existing data (HubSpot + targets)
+   - Uses both exact and fuzzy matching (95% threshold)
+   - Creates final output files
+
+## Output Files
+
+Only 3 CSV files are created in the `csvs/` directory:
+
+### progress.csv
+- Used during scraping to track progress
+- Contains all scraped data
+- Automatically maintained by the scraper
+
+### matched.csv
+- Businesses that already exist in your database
+- Two columns: business_name, matched_name
+- Shows what each business matched to
+
+### final_data.csv
+- **This is your main output file**
+- Contains new prospects not in your existing data
+- Includes: business_name, previous_name, address, agent, status
+- Ready for import into your CRM
 
 ## Configuration
 
 Edit `config.py` to modify:
 
 - **Search terms**: List of terms to search for
-- **Timing settings**: Min/max wait times, pages per batch
-- **File paths**: Output file locations
-- **Browser settings**: User agent, viewport size
+- **Timing settings**: Min/max wait times (15-25 seconds default)
+- **Fuzzy match threshold**: Default 95% similarity
 
-Default search terms:
-- truck, freight, transport, excavation, trailer
-- ltl, haul, grading, sitework, aggregates
-- paving, asphalt, concrete, diesel, towing
+## Usage Examples
 
-## Usage
-
-Simply run the main script:
-
+### Normal Run
 ```bash
 python main.py
 ```
 
-The scraper will:
-1. Load any previous state (if resuming)
-2. Search each term sequentially
-3. Navigate through all pages of results
-4. Extract business information
-5. Save progress after each batch
-6. Generate final CSV files when complete
+### Resuming After Interruption
+Just run again - it automatically resumes:
+```bash
+python main.py
+```
 
-### Stopping and Resuming
-
-- Press `Ctrl+C` to stop gracefully at any time
-- Progress is automatically saved
-- Run `python main.py` again to resume from where you left off
-
-## Output Files
-
-### nh_progress_all.csv
-Contains all scraped businesses with columns:
-- `business_name`: Company name
-- `business_id`: Unique NH business ID
-- `homestate_name`: Home state name
-- `previous_name`: Previous business names
-- `business_type`: Entity type (LLC, Corp, etc.)
-- `address`: Business address
-- `agent`: Registered agent
-- `status`: Current status
-- `search_term`: Which search term found this business
-
-### nh_active_only.csv
-Filtered subset containing only businesses with status "Good Standing" or "Active"
-
-### nh_scraper_state.json
-Tracks scraping progress including:
-- Completed pages by search term
-- Failed pages for retry
-- Total pages detected per term
-- Current search term being processed
-
-## Error Handling
-
-The scraper handles several error scenarios:
-- **Browser checks**: Detects and reports when hitting anti-bot measures
-- **Page navigation failures**: Attempts direct page jumps for efficiency
-- **Network timeouts**: 30-second timeout for page loads
-- **Invalid pages**: Detects when reaching beyond available pages
-
-## Performance
-
-- Processes approximately 6-11 pages per session
-- 15-25 second delays between sessions
-- Average runtime depends on total pages
-- Typical page processing: 2-3 seconds per page
+### Checking Progress
+The scraper shows progress for each search term and estimates completion.
 
 ## Best Practices
 
-1. **Run during off-peak hours** to minimize impact on the server
-2. **Monitor the browser window** - it runs in non-headless mode for debugging
-3. **Check state file** if you need to manually adjust progress
-4. **Keep delays reasonable** - faster isn't always better for stability
+1. **Prepare your data**: Ensure HubSpot and target files are in the correct format
+2. **Run during off-peak hours** to minimize server impact
+3. **Let it complete**: The deduplication only runs after all scraping is done
+4. **Monitor progress**: Watch the terminal for status updates
 
 ## Troubleshooting
 
-**Browser check detected**: The site has anti-automation measures. Current settings usually avoid this, but if it happens frequently, increase wait times in `config.py`
+**No comparison data found**: Make sure your HubSpot and target files are in the `csvs/` directory with the correct column names.
 
-**Navigation failures**: Some pages may fail to load. The scraper tracks these and you can manually check failed pages in the state file
+**Browser check detected**: The site has anti-bot measures. Increase wait times in `config.py` if this happens frequently.
 
-**Duplicate businesses**: Automatically handled - the scraper deduplicates by `business_id`
-
-## License
-
-This tool is for educational and research purposes. Ensure you comply with the website's terms of service and `robots.txt`.
+**Fuzzy matching takes too long**: You can increase the threshold in `config.py` to be more strict (e.g., 98 instead of 95).
 
 ## Notes
 
-- The scraper uses Playwright with Chromium in non-headless mode
-- Each search term is completed before moving to the next
-- Progress is saved incrementally, making it very resilient to interruptions
-- The "Page X of Y" detection helps optimize navigation for large result sets
+- The scraper runs in non-headless mode so you can see what's happening
+- All businesses are processed, but only active ones make it to the final output
+- Fuzzy matching catches variations like "ABC Trucking LLC" vs "ABC Trucking"
+- Progress is saved incrementally, making the process very resilient

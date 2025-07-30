@@ -7,7 +7,7 @@ import subprocess
 import pandas as pd
 
 # Configuration
-CSV_FILE = "nh_cleaned_data.csv"
+CSV_FILE = "cleaned.csv"
 DB_FILE = "nh_sos_data.db"
 
 

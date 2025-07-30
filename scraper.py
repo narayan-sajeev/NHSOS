@@ -116,7 +116,7 @@ def print_session_header(search_term, start_page, end_page, state):
 
 def print_final_summary(state):
     print("\n" + "=" * 80)
-    print("SCRAPING COMPLETE")
+    print("SCRAPING TERMINATED")
     print("=" * 80)
 
     total_completed = 0
