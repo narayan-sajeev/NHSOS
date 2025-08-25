@@ -1,145 +1,148 @@
-# NH SOS Multi-Term Scraper
+# NH SOS Business Scraper & Processor
 
-A robust web scraper for the New Hampshire Secretary of State Business Inquiry system that searches for businesses using multiple search terms, filters for active businesses, and deduplicates against existing data.
+## 📌 Overview
 
-## Overview
+This project automates the scraping, cleaning, deduplication, and visualization of **New Hampshire Secretary of State (NH SOS) business records**. It is designed to identify and track trucking-related businesses across New England by searching for industry-specific terms (e.g., *truck, freight, towing, excavation*), cleaning and standardizing records, and storing results in CSV and SQLite databases.
 
-This scraper automates the process of searching for businesses on the NH SOS QuickStart portal, then processes the results to identify new prospects not already in your database.
+The pipeline integrates **Playwright** for browser automation, **pandas** for data processing, and **Datasette** for interactive exploration.
 
-## Features
+---
 
-- **Multi-term search**: Automatically searches using 15 different business-related terms
-- **State persistence**: Saves progress after each session, allowing you to stop and resume
-- **Smart filtering**: Only processes businesses with "Good Standing" or "Active" status
-- **Automatic deduplication**: Compares against HubSpot and target files using exact and fuzzy matching
-- **Minimal output**: Creates only 3 CSV files: progress.csv, matched.csv, and final_data.csv
+## ⚙️ Features
 
-## Requirements
+* **Automated Web Scraping**
+  Uses Playwright to query NH SOS with multiple trucking-related search terms.
+* **State Persistence**
+  Saves progress and resumes scraping if interrupted (`nh_scraper_state.json`).
+* **Data Cleaning**
+  Standardizes names, addresses, and agent information.
+* **Deduplication**
+  Removes duplicates by exact-match checking against:
 
-- Python 3.7+
-- Playwright
-- Pandas
-- RapidFuzz
-- AsyncIO support
+  * Existing HubSpot company records (`hubspot.csv`)
+  * Previous scraping outputs (`targets_*.csv`)
+* **CSV & Database Outputs**
 
-## Installation
+  * `progress.csv`: Tracks scraped businesses across search terms.
+  * `matched.csv`: Businesses matched against existing datasets.
+  * `final_data.csv`: Cleaned, deduplicated dataset of active businesses.
+* **Visualization**
+  Converts final data into an SQLite database and serves it with **Datasette**.
 
-1. Clone this repository
-2. Install required packages:
-   ```bash
-   pip install playwright pandas asyncio rapidfuzz
-   playwright install chromium
-   ```
-3. Create the CSV directory:
-   ```bash
-   mkdir csvs
-   ```
+---
 
-## Project Structure
+## 🗂 Project Structure
 
 ```
-├── main.py               # Entry point with integrated processing
-├── scraper.py            # Main scraping logic
-├── browser.py            # Browser automation
-├── state.py              # State persistence
-├── config.py             # Configuration settings
-├── nh_scraper_state.json # State file (auto-generated)
-└── csvs/                 # CSV directory
-    ├── progress.csv      # Scraping progress (all data)
-    ├── matched.csv       # Businesses that exist in your database
-    ├── final_data.csv    # New prospects (ready to use)
-    ├── hubspot.csv       # Your HubSpot data (you provide)
-    └── targets_*.csv     # Your existing business data (you provide)
+.
+├── main.py             # Entry point: orchestrates scraping + processing
+├── scraper.py          # Core scraping logic
+├── browser.py          # Browser automation with Playwright
+├── state.py            # State persistence (progress across terms/pages)
+├── processor.py        # Cleans, filters, deduplicates scraped data
+├── cleaner.py          # Utility functions for cleaning names, addresses, agents
+├── deduplicator.py     # Deduplicates against HubSpot + target datasets
+├── visuals.py          # SQLite + Datasette visualization
+├── config.py           # Central configuration (files, search terms, settings)
+├── csvs/               # Data storage (progress.csv, matched.csv, final_data.csv, targets_*.csv)
+└── nh_scraper_state.json # State file tracking completed pages
 ```
 
-## Setup
+---
 
-1. Place your existing data files in the `csvs/` directory:
-   - `hubspot.csv` - Must have an "Associated Company" column
-   - `targets_*.csv` - Any number of target files, must have a "business_name" column
+## 🔍 Workflow
 
-2. Run the scraper:
+1. **Run the scraper**
+
    ```bash
    python main.py
    ```
 
-## How It Works
+   * Iterates through search terms defined in `config.py`.
+   * Scrapes businesses from NH SOS with Playwright.
+   * Saves intermediate results in `progress.csv`.
 
-1. **Scraping Phase**: 
-   - Searches each term on NH SOS website
-   - Extracts business information
-   - Saves all data to `progress.csv`
-   - Can be stopped and resumed at any time
+2. **Process scraped data** (`processor.py`)
 
-2. **Processing Phase** (runs automatically when scraping completes):
-   - Filters for active businesses only
-   - Cleans and standardizes the data
-   - Compares against your existing data (HubSpot + targets)
-   - Uses both exact and fuzzy matching (95% threshold)
-   - Creates final output files
+   * Filters only **active businesses** (`Good Standing`, `Active`).
+   * Cleans business names, addresses, and agent details.
+   * Deduplicates against HubSpot and existing `targets_*.csv`.
 
-## Output Files
+3. **Generate outputs**
 
-Only 3 CSV files are created in the `csvs/` directory:
+   * `progress.csv` → All scraped records with status tracking.
+   * `matched.csv` → Records matched to existing datasets.
+   * `final_data.csv` → Final cleaned, deduplicated dataset.
 
-### progress.csv
-- Used during scraping to track progress
-- Contains all scraped data
-- Automatically maintained by the scraper
+4. **Visualize data**
 
-### matched.csv
-- Businesses that already exist in your database
-- Two columns: business_name, matched_name
-- Shows what each business matched to
+   ```bash
+   python visuals.py
+   ```
 
-### final_data.csv
-- **This is your main output file**
-- Contains new prospects not in your existing data
-- Includes: business_name, previous_name, address, agent, status
-- Ready for import into your CRM
+   * Loads `final_data.csv` into SQLite (`nh_sos_data.db`).
+   * Launches Datasette for querying and visualization.
 
-## Configuration
+---
 
-Edit `config.py` to modify:
+## 📊 Example Data Flow
 
-- **Search terms**: List of terms to search for
-- **Timing settings**: Min/max wait times (15-25 seconds default)
-- **Fuzzy match threshold**: Default 95% similarity
+1. Scraping term **“truck”** → Collects 175 pages of businesses.
+2. State stored in `nh_scraper_state.json` so it can resume if stopped.
+3. Deduplication removes overlaps with `hubspot.csv` and previous `targets_*.csv`.
+4. Cleaned results written into `final_data.csv` for further use.
 
-## Usage Examples
+---
 
-### Normal Run
-```bash
-python main.py
-```
+## 🛠 Requirements
 
-### Resuming After Interruption
-Just run again - it automatically resumes:
-```bash
-python main.py
-```
+* **Python 3.9+**
+* Dependencies:
 
-### Checking Progress
-The scraper shows progress for each search term and estimates completion.
+  ```bash
+  pip install pandas playwright sqlite-utils datasette
+  ```
+* Playwright setup:
 
-## Best Practices
+  ```bash
+  playwright install
+  ```
 
-1. **Prepare your data**: Ensure HubSpot and target files are in the correct format
-2. **Run during off-peak hours** to minimize server impact
-3. **Let it complete**: The deduplication only runs after all scraping is done
-4. **Monitor progress**: Watch the terminal for status updates
+---
 
-## Troubleshooting
+## 🚀 Usage
 
-**No comparison data found**: Make sure your HubSpot and target files are in the `csvs/` directory with the correct column names.
+* **Start a new scrape**:
 
-**Browser check detected**: The site has anti-bot measures. Increase wait times in `config.py` if this happens frequently.
+  ```bash
+  python main.py
+  ```
+* **Resume after interruption**:
+  State will auto-load from `nh_scraper_state.json`.
+* **Process and clean existing data**:
 
-**Fuzzy matching takes too long**: You can increase the threshold in `config.py` to be more strict (e.g., 98 instead of 95).
+  ```bash
+  python processor.py
+  ```
+* **Explore results in browser**:
 
-## Notes
+  ```bash
+  python visuals.py
+  ```
 
-- The scraper runs in non-headless mode so you can see what's happening
-- All businesses are processed, but only active ones make it to the final output
-- Fuzzy matching catches variations like "ABC Trucking LLC" vs "ABC Trucking"
-- Progress is saved incrementally, making the process very resilient
+---
+
+## 📂 Key Outputs
+
+* `progress.csv` → Raw scrape progress.
+* `matched.csv` → Businesses matched against existing datasets.
+* `final_data.csv` → Cleaned, deduplicated, active businesses (main deliverable).
+* `nh_sos_data.db` → SQLite database for visualization.
+
+---
+
+## 🔮 Future Improvements
+
+* Add **fuzzy deduplication** (beyond exact matches).
+* Expand beyond NH SOS to other state registries.
+* Build **Power BI / dashboard integration** for executives.
